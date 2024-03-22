@@ -2224,14 +2224,15 @@ lib.composeManyExtensions [
         _old: rec {
           nativeBuildInputs = [
             pkg-config
-            pkgs.SDL
+            pkgs.SDL2
           ];
 
           buildInputs = [
-            pkgs.SDL
-            pkgs.SDL_image
-            pkgs.SDL_mixer
-            pkgs.SDL_ttf
+            pkgs.SDL2
+            pkgs.SDL2_image
+            pkgs.SDL2_mixer
+            pkgs.SDL2_ttf
+            pkgs.portmidi
             pkgs.libpng
             pkgs.libjpeg
             pkgs.portmidi
