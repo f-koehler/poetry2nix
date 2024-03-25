@@ -888,39 +888,39 @@ lib.composeManyExtensions [
       );
 
       granian = super.granian.overridePythonAttrs (old: lib.optionalAttrs (!(old.src.isWheel or false))
-      (
-        let
-          githubHash = {
-            "0.2.1" = "sha256-XEhu6M1hFi3/gAKZcei7KJSrIhhlZhlvZvbfyA6VLR4=";
-            "0.2.2" = "sha256-KWwefJ3CfOUGCgAm7AhFlIxRF9qxNEo3npGOxVJ23FY=";
-            "0.2.3" = "sha256-2JnyO0wxkV49R/0wzDb/PnUWWHi3ckwK4nVe7dWeH1k=";
-            "0.2.4" = "sha256-GdQJvVPsWgC1z7La9h11x2pRAP+L998yImhTFrFT5l8=";
-            "0.2.5" = "sha256-vMXMxss77rmXSjoB53eE8XN2jXyIEf03WoQiDfvhDmw=";
-            "0.2.6" = "sha256-l9W9+KDg/43mc0toEz1n1pqw+oQdiHdAxGlS+KLIGhw=";
-            "0.3.0" = "sha256-icBjtW8fZjT3mLo43nKWdirMz6GZIy/RghEO95pHJEU=";
-            "0.3.1" = "sha256-EKK+RxkJ//fY43EjvN1Fry7mn2ZLIaNlTyKPJRxyKZs=";
-            "1.0.2" = "sha256-HOLimDGV078ZJadjywbBgpYIKR2jVk9ZAIt0kk62Va4=";
-          }.${old.version} or lib.fakeHash;
-          # we can count on this repo's root to have Cargo.lock
+        (
+          let
+            githubHash = {
+              "0.2.1" = "sha256-XEhu6M1hFi3/gAKZcei7KJSrIhhlZhlvZvbfyA6VLR4=";
+              "0.2.2" = "sha256-KWwefJ3CfOUGCgAm7AhFlIxRF9qxNEo3npGOxVJ23FY=";
+              "0.2.3" = "sha256-2JnyO0wxkV49R/0wzDb/PnUWWHi3ckwK4nVe7dWeH1k=";
+              "0.2.4" = "sha256-GdQJvVPsWgC1z7La9h11x2pRAP+L998yImhTFrFT5l8=";
+              "0.2.5" = "sha256-vMXMxss77rmXSjoB53eE8XN2jXyIEf03WoQiDfvhDmw=";
+              "0.2.6" = "sha256-l9W9+KDg/43mc0toEz1n1pqw+oQdiHdAxGlS+KLIGhw=";
+              "0.3.0" = "sha256-icBjtW8fZjT3mLo43nKWdirMz6GZIy/RghEO95pHJEU=";
+              "0.3.1" = "sha256-EKK+RxkJ//fY43EjvN1Fry7mn2ZLIaNlTyKPJRxyKZs=";
+              "1.0.2" = "sha256-HOLimDGV078ZJadjywbBgpYIKR2jVk9ZAIt0kk62Va4=";
+            }.${old.version} or lib.fakeHash;
+            # we can count on this repo's root to have Cargo.lock
 
-          src = pkgs.fetchFromGitHub {
-            owner = "emmett-framework";
-            repo = "granian";
-            rev = "v${old.version}";
-            sha256 = githubHash;
-          };
-        in
-        {
-          inherit src;
-          cargoDeps = pkgs.rustPlatform.importCargoLock {
-            lockFile = "${src.out}/Cargo.lock";
-          };
-          nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [
-            pkgs.rustPlatform.cargoSetupHook
-            pkgs.rustPlatform.maturinBuildHook
-          ];
-        }
-      ));
+            src = pkgs.fetchFromGitHub {
+              owner = "emmett-framework";
+              repo = "granian";
+              rev = "v${old.version}";
+              sha256 = githubHash;
+            };
+          in
+          {
+            inherit src;
+            cargoDeps = pkgs.rustPlatform.importCargoLock {
+              lockFile = "${src.out}/Cargo.lock";
+            };
+            nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [
+              pkgs.rustPlatform.cargoSetupHook
+              pkgs.rustPlatform.maturinBuildHook
+            ];
+          }
+        ));
 
       gitpython = super.gitpython.overridePythonAttrs (
         old: {
@@ -2238,13 +2238,43 @@ lib.composeManyExtensions [
             pkgs.SDL2_mixer
             pkgs.SDL2_ttf
           ];
-          
+          patches = [
+            (pkgs.fetchpatch {
+              url = "https://raw.githubusercontent.com/NixOS/nixpkgs/8621265c46da02ad812a17fe382316fc360750bb/pkgs/development/python-modules/pygame/fix-dependency-finding.patch";
+              hash = "sha256-aUeQyFHvYY6a8WqAqKjkDakKeHNLhGgm6VLI5xuaa7g=";
+            })
+            (pkgs.fetchpatch {
+              url = "https://raw.githubusercontent.com/NixOS/nixpkgs/8621265c46da02ad812a17fe382316fc360750bb/pkgs/development/python-modules/pygame/skip-surface-tests.patch";
+              hash = "sha256-4YnHccCMBHeNzBChjagAKj9ElVbBaZvgoBZKYeiDTw4=";
+            })
+          ];
+
+          postPatch = ''
+            substituteInPlace src_py/sysfont.py \
+              --replace-fail 'path="fc-list"' 'path="${pkgs.fontconfig}/bin/fc-list"' \
+              --replace-fail /usr/X11/bin/fc-list ${pkgs.fontconfig}/bin/fc-list
+          '';
+
           preConfigure = ''
             ${self.python.interpreter} buildconfig/config.py
           '';
 
-          # Tests fail because of no audio device and display.
-          doCheck = false;
+          doCheck = true;
+          env = lib.optionalAttrs stdenv.cc.isClang {
+            NIX_CFLAGS_COMPILE = "-Wno-error=incompatible-function-pointer-types";
+          };
+          checkPhase = ''
+            runHook preCheck
+
+            # No audio or video device in test environment
+            export SDL_VIDEODRIVER=dummy
+            export SDL_AUDIODRIVER=disk
+
+            ${self.python.interpreter} -m pygame.tests -v --exclude opengl,timing --time_out 300
+
+            runHook postCheck
+          '';
+          pythonImportsCheck = [ "pygame" ];
         }
       );
 
