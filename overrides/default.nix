@@ -78,12 +78,14 @@ in
     # NixOps
     (
       self: super:
-        lib.mapAttrs (_: v:
+        lib.mapAttrs
+        (_: v:
           addBuildSystem' {
             inherit self;
             drv = v;
             attr = "poetry";
-          }) (lib.filterAttrs (n: _: lib.strings.hasPrefix "nixops" n) super)
+          })
+        (lib.filterAttrs (n: _: lib.strings.hasPrefix "nixops" n) super)
         // {
           # NixOps >=2 dependency
           nixos-modules-contrib = addBuildSystem' {
@@ -2487,10 +2489,26 @@ in
               pkgs.SDL2_ttf
             ];
             patches = [
-              (pkgs.fetchpatch {
-                url = "https://raw.githubusercontent.com/NixOS/nixpkgs/8621265c46da02ad812a17fe382316fc360750bb/pkgs/development/python-modules/pygame/fix-dependency-finding.patch";
-                hash = "sha256-l9Uh7ktjkbWDDVoiHQA/sKuHb3t1rX4SopDDylt0NXM=";
+              (pkgs.substituteAll {
+                src = pkgs.fetchpatch {
+                  url = "https://raw.githubusercontent.com/NixOS/nixpkgs/8621265c46da02ad812a17fe382316fc360750bb/pkgs/development/python-modules/pygame/fix-dependency-finding.patch";
+                  hash = "sha256-l9Uh7ktjkbWDDVoiHQA/sKuHb3t1rX4SopDDylt0NXM=";
+                };
+                buildinputs_include = builtins.toJSON (builtins.concatMap
+                  (dep: [
+                    "${lib.getDev dep}/"
+                    "${lib.getDev dep}/include"
+                    "${lib.getDev dep}/include/SDL2"
+                  ])
+                  buildInputs);
+                buildinputs_lib = builtins.toJSON (builtins.concatMap
+                  (dep: [
+                    "${lib.getLib dep}/"
+                    "${lib.getLib dep}/lib"
+                  ])
+                  buildInputs);
               })
+
               (pkgs.fetchpatch {
                 url = "https://raw.githubusercontent.com/NixOS/nixpkgs/8621265c46da02ad812a17fe382316fc360750bb/pkgs/development/python-modules/pygame/skip-surface-tests.patch";
                 hash = "sha256-hFdVeugVOanM2d8z8s/+oFVSZSfXw9q3kdYD1uG+EBQ=";
