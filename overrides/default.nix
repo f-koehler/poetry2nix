@@ -2522,6 +2522,7 @@ in
             '';
 
             preConfigure = ''
+              ${self.python.interpreter} -c "from pathlib import Path; print((Path.cwd() / 'buildconfig/config_unix.py').read_text())"
               ${self.python.interpreter} buildconfig/config.py
             '';
 
